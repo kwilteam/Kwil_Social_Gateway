@@ -8,6 +8,7 @@ const {
 const { getGroupFollowingRaw } = require('./utilities/getGroupFollowing.js');
 const getGroupModerators = require('./utilities/getGroupModerators.js');
 const isGroupPublic = require('./utilities/isGroupPublic.js');
+const connector = require('../database/kwildb.js');
 
 
 // Queries Kwil server based on request, response, and the inputted query function.
