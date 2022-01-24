@@ -146,14 +146,15 @@ const createHandler = (defHandler) => {
                     throw new Error('Invalid referenceType');
                 };
                 // Writes sql for database request.
-                await knex(tableName).insert({
+                let query1 = knex(tableName).insert({
                     post_id: p.data.id,
                     post_text: p.data.text,
                     post_time: p.data.timestamp,
                     username: p.data.username,
                     reference_id: p.data.referenceID,
                     rsa_signature: p.signature,
-                });
+                }).toString();
+                await connector.query(query1, true);
             };
             // Checks for errors before creating comment in database.
             defHandler(req, res, checkPostSig, commentDB);
@@ -167,7 +168,7 @@ const createHandler = (defHandler) => {
                 g.data.groupName = g.data.groupName.toUpperCase();
 
                 // Writes SQL for request
-                await knex('groups').insert({
+                let query1 = knex('groups').insert({
                     group_name: g.data.groupName,
                     group_owner: g.data.username,
                     public: g.data.public,
@@ -181,7 +182,8 @@ const createHandler = (defHandler) => {
                     color: g.data.color,
                     rsa_signature: g.signature,
                     signator: g.data.username,
-                });
+                }).toString();
+                await connector.query(query1, true);
                 if (g.photo.length > 0) {
                     writer.storePhotos(g.photo, [g.data.photoHash]);
                 };
@@ -200,9 +202,10 @@ const createHandler = (defHandler) => {
                 if (!g.changed.hasOwnProperty('rsa_signature')) {
                     g.changed.rsa_signature = g.signator.signature
                 };
-                await knex('groups')
+                let query1 = knex('groups')
                     .where({ group_name: g.data.group_name })
-                    .update(g.changed);
+                    .update(g.changed).toString();
+                await connector.query(query1, true);
                 if (g.changed.photo_hash && g.photo) {
                     writer.storePhotos(g.photo, [g.data.photoHash]);
                 };
@@ -239,11 +242,12 @@ const createHandler = (defHandler) => {
                 // Creates edited account SQL statement if edits were requested
                 if (Object.keys(updateObj).length > 0) {
                     console.log(updateObj);
-                    await knex('users')
+                    let query1 = knex('users')
                         .where({
                             username: a.data.username.toLowerCase(),
                         })
-                        .update(updateObj);
+                        .update(updateObj).toString();
+                    await connector.query(query1, true);
                     if (a.photo && a.changed.includes('pfp_hash')) {
                         writer.storePhotos(a.photo, [a.data.pfpHash]);
                     };
@@ -266,29 +270,32 @@ const createHandler = (defHandler) => {
                 // Checks whether there is an existing entry for this requested follower relationship.
                 f.data.username = f.data.username.toLowerCase();
                 f.data.followee = f.data.followee.toLowerCase();
-                const results = await knex('followers')
+                const results = knex('followers')
                     .select('followee')
-                    .where({ follower: f.data.username, followee: f.data.followee });
+                    .where({ follower: f.data.username, followee: f.data.followee }).toString();
+                resQuery1 = await connector.query(results, true);
                 let relationExists = false;
-                if (results.length > 0) {
+                if (resQuery1.length > 0) {
                     relationExists = true;
                 };
                 if ( f.data.follow == true && relationExists == false ) {
                     /*
                         In the post request, a lowercase username should be present as the only parameter.
                     */
-                    await knex('followers').insert({
+                    let query1 = knex('followers').insert({
                         follower: f.data.username,
                         followee: f.data.followee,
                         post_time: new Date(f.data.timestamp),
-                    });
+                    }).toString();
+                    await connector.query(query1, true);
                 } else if ( f.data.follow == false && relationExists == true ) {
-                    await knex('followers')
+                    let query2 = knex('followers')
                         .where({
                             follower: f.data.username,
                             followee: f.data.followee,
                         })
-                        .del();
+                        .del().toString();
+                    await connector.query(query2, true);
                 } else if (relationExists) {
                     throw new Error(`${f.data.username} already follows ${f.data.followee}`);
                 } else if (!relationExists) {
@@ -315,11 +322,12 @@ const createHandler = (defHandler) => {
                         memberList.push(m.data.newMember);
 
                         // Updates the Kwil database.
-                        await knex('groups')
+                        let query1 = knex('groups')
                             .where({
                                 group_name: m.data.group_name,
                             })
-                            .update({ moderators: memberList });
+                            .update({ moderators: memberList }).toString();
+                        await connector.query(query1, true);
                     } else {
                         throw new Error(`${m.data.newMember} is already a moderator in group ${m.data.group_name}`);
                     };
@@ -333,11 +341,12 @@ const createHandler = (defHandler) => {
                         );
                         memberList.splice(removeIndex, 1);
                         // Updates Kwil database.
-                        await knex('groups')
+                        let query2 = knex('groups')
                             .where({
                                 group_name: m.data.group_name,
                             })
-                            .update({ moderators: memberList });
+                            .update({ moderators: memberList }).toString();
+                        await connector.query(query2, true);
                     } else {
                         throw new Error(`${m.data.newMember} is already not a moderator in group ${m.data.group_name}`);
                     };
@@ -354,29 +363,32 @@ const createHandler = (defHandler) => {
                 f.data.group = f.data.group.toUpperCase()
                 f.data.username = f.data.username.toLowerCase()
                 if (f.data.follow == true) {
-                    const queryRes = await knex('group_followers')
+                    const results = await knex('group_followers')
                         .select('group_name')
                         .where({
                             group_name: f.data.group,
                             follower: f.data.username,
-                        })
-                    if (queryRes.length == 0) {
+                        }).toString();
+                    resQuery1 = await connector.query(results, true);
+                    if (resQuery1.length == 0) {
                         // Checks to see whether anything is recorded when requesting user is queried in group followers.
-                        await knex('group_followers').insert({
+                        let query1 = knex('group_followers').insert({
                             follower: f.data.username,
                             group_name: f.data.group,
                             post_time: new Date(f.data.timestamp),
-                        });
+                        }).toString();
+                        await connector.query(query1, true);
                     } else {
                         throw new Error(`User ${f.data.username} already follows group ${f.data.group}`);
                     };
                 } else if (f.data.follow == false) {
-                    await knex('group_followers')
+                    let query2 = knex('group_followers')
                         .where({
                             follower: f.data.username,
                             group_name: f.data.group,
                         })
-                        .del();
+                        .del().toString();
+                    await connector.query(query2, true);
                 };
 
             };
@@ -390,10 +402,11 @@ const createHandler = (defHandler) => {
                 // Checks whether user has liked a post and inserted/updates like status accordingly.
                 l.data.username = l.data.username.toLowerCase()
                 const _date = new Date(l.data.timestamp)
-                const prevLike = await knex('likes').select('post_time').where({
+                const prevLikeRes = await knex('likes').select('post_time').where({
                     username: l.data.username,
                     post_id: l.data.postID,
-                })
+                }).toString();
+                let prevLike = await connector.query(prevLikeRes, true);
 
                 // Updates like status.
                 if (prevLike.length > 0) {
@@ -402,7 +415,7 @@ const createHandler = (defHandler) => {
                     // like is the most recent one that this bundler is aware of.
                     if (_date > prevLike[0].post_time) {
                         // Updates like parameters.
-                        await knex('likes')
+                        let query1 = knex('likes')
                             .update({
                                 liked: l.data.liked,
                                 post_time: _date,
@@ -410,15 +423,17 @@ const createHandler = (defHandler) => {
                             .where({
                                 username: l.data.username,
                                 post_id: l.data.postID,
-                            });
+                            }).toString();
+                        await connector.query(query1, true);
                     };
                 } else { // Inserts like whose user/post relationship needs initiation.
-                    await knex('likes').insert({
+                    let query2 = knex('likes').insert({
                         username: l.data.username,
                         post_id: l.data.postID,
                         liked: l.data.liked,
                         post_time: _date,
-                    });
+                    }).toString();
+                    await connector.query(query2, true);
                 };
             };
 
@@ -431,21 +446,23 @@ const createHandler = (defHandler) => {
             async function queryFunc(l) {
                 // Sets required variables.
                 l.data.username = l.data.username.toLowerCase();
-                const prevLike = await knex('likes').select('post_time').where({
+                const prevLikeRes = knex('likes').select('post_time').where({
                     username: l.data.username,
                     post_id: l.data.postID,
-                });
+                }).toString();
+                let prevLike = await connector.query(prevLikeRes, true);
                 let _date = new Date(l.data.timestamp);
 
                 // Checks whether something necessitates deletion.
                 if (prevLike.length > 0) {
                     if (_date > prevLike[0].post_time) {
-                        await knex('likes')
+                        let query1 = knex('likes')
                             .where({
                                 username: l.data.username,
                                 post_id: l.data.postID,
                             })
-                            .del();
+                            .del().toString();
+                        await connector.query(query1, true);
                     };
                 };
             };
@@ -459,13 +476,14 @@ const createHandler = (defHandler) => {
                 return true;
             };
             async function queryFunc(i) {
-                await knex('invites').insert({
+                let query1 = knex('invites').insert({
                     invite_id: i.inviteID,
                     username: i.receiver,
                     invite: i.invite,
                     invite_key: i.inviteKey,
                     post_time: i.timestamp
-                })
+                }).toString();
+                await connector.query(query1, true);
             }
             defHandler(req, res, noSig, queryFunc)
         }
@@ -473,7 +491,10 @@ const createHandler = (defHandler) => {
         // Records messaging invite deletion to database.
         async deleteInvite(req, res) {
             async function queryFunc(i) {
-                await knex('invites').where({invite_id: i.data.inviteID}).del()
+                let query1 = knex('invites')
+                    .where({invite_id: i.data.inviteID})
+                    .del().toString();
+                await connector.query(query1, true);
             }
             defHandler(req, res, checkPostSig, queryFunc)
         }
@@ -485,4 +506,4 @@ const createHandler = (defHandler) => {
 };
 
 
-module.exports = {createHandler, reqHandler};
+module.exports = { createHandler, reqHandler };

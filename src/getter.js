@@ -28,9 +28,10 @@ class Getter {
     // Checks whether user exists in server.
     async ifUserExists(req, res) {
         const queryFunc = async (req) => {
-            const account = await knex('users_lite')
+            const accountRes = knex('users_lite')
                 .select('modulus')
-                .where({username: req.params['0']});
+                .where({username: req.params['0']}).toString();
+            let account = await connector.query(accountRes, true);
             return account[0];
         };
         defGetter(req, res, queryFunc);
@@ -39,9 +40,10 @@ class Getter {
     // Logs user in to their account.
     async login(req, res) {
         const queryFunc = async (req) => {
-            const login = await knex('users')
+            const loginRes = knex('users')
                 .select('login_ciphertext', 'salt')
-                .where({ username: req.params['0'] });
+                .where({ username: req.params['0'] }).toString();
+            let login = await connector.query(loginRes, true);
             return login;
         };
         defGetter(req, res, queryFunc);
@@ -50,10 +52,11 @@ class Getter {
     // Returns account data based on login.
     async getAccountData(req, res) {
         const queryFunc = async (req) => {
-            const data = await knex('users')
+            const dataRes = knex('users')
                 .select('display_name', 'bio', 'pfp_hash', 'banner_hash', 'settings')
-                .where({ username: req.params['0'] });
-                return data[0];
+                .where({ username: req.params['0'] }).toString();
+            let data = await connector.query(dataRes, true);
+            return data[0];
         };
         defGetter(req, res, queryFunc);
     };
@@ -61,10 +64,11 @@ class Getter {
     // Returns whether user is following another user.
     async isFollowing(req, res) {
         const queryFunc = async (req) => {
-            const data = await knex('followers').select('followee').where({
+            const dataRes = knex('followers').select('followee').where({
                 follower: req.params['0'],
                 followee: req.params['1'],
-            });
+            }).toString();
+            let data = await connector.query(dataRes, true);
             return data[0];
         };
         defGetter(req, res, queryFunc);
@@ -73,7 +77,7 @@ class Getter {
     // Returns group data.
     async getGroupData(req, res) {
         const queryFunc = async (req) => {
-            const results = await knex('groups')
+            const resQuery = knex('groups')
                 .select(
                     'group_name',
                     'group_owner',
@@ -87,7 +91,8 @@ class Getter {
                     'color',
                     'rules'
                 )
-                .where({ group_name: req.params['0'] });
+                .where({ group_name: req.params['0'] }).toString();
+                let results = await connector.query(resQuery, true);
             return results[0];
         };
         defGetter(req, res, queryFunc);
@@ -96,9 +101,10 @@ class Getter {
     // Returns accounts that individual user is following.
     async getFollowing(req, res) {
         const queryFunc = async (req) => {
-            const followers = await knex('followers')
+            const followersQuery = knex('followers')
                 .select('followee')
-                .where({follower: req.params['0']});
+                .where({follower: req.params['0']}).toString();
+            let followers = await connector.query(followersQuery, true);
             return followers;
         };
         defGetter(req, res, queryFunc);
@@ -107,9 +113,10 @@ class Getter {
     // Returns accounts that follow a requested user.
     async getFollowers(req, res) {
         const queryFunc = async (req) => {
-            const followers = await knex('followers')
+            const followersQuery = knex('followers')
                 .select('follower')
-                .where({followee: req.params['0']});
+                .where({followee: req.params['0']}).toString();
+            let followers = await connector.query(followersQuery, true);
             return followers;
         };
         defGetter(req, res, queryFunc);
@@ -128,7 +135,7 @@ class Getter {
                 lim = req.params['2'];
             };
             if (publicity) {
-                const results = await knex('posts')
+                const resQuery = knex('posts')
                     .select(
                         'post_id',
                         'post_title',
@@ -142,7 +149,8 @@ class Getter {
                     .where({ group_name: req.params['0'] })
                     .andWhere('post_time', '<', _time)
                     .orderBy('post_time', 'desc')
-                    .limit(lim);
+                    .limit(lim).toString();
+                let results = await connector.query(resQuery, true);
                 return results;
             } else {
                 const groupMembers = await getGroupModerators(req.params['0']);
@@ -163,12 +171,13 @@ class Getter {
     // Returns whether user is a member of a group.
     async isMember(req, res) {
         const queryFunc = async (req) => {
-            const results = await knex('group_followers')
+            const resQuery = knex('group_followers')
                 .select('group_name')
                 .where({
                     follower: req.params['0'],
                     group_name: req.params['1'],
-                });
+                }).toString();
+            let results = await connector.query(resQuery, true);
             return results;
         };
         defGetter(req, res, queryFunc);
@@ -177,7 +186,7 @@ class Getter {
     // Returns most recent group post and group data.
     async getGroupPreview(req, res) {
         const queryFunc = async (req) => {
-            const groupResults = await knex('groups')
+            const groupResultsQuery = knex('groups')
                 .select(
                     'group_owner',
                     'public',
@@ -189,11 +198,12 @@ class Getter {
                     'banner_hash',
                     'color'
                 )
-                .where({ group_name: req.params['0'] })
+                .where({ group_name: req.params['0'] }).toString();
+            let groupResults = await connector.query(groupResultsQuery, true);
             const publicity = await isGroupPublic(req.params['0'])
             let results = ''
             if (publicity) {
-                results = await knex('posts')
+                let resultsQuery = knex('posts')
                     .select(
                         'post_id',
                         'post_title',
@@ -206,7 +216,8 @@ class Getter {
                     )
                     .where({ group_name: req.params['0'] })
                     .orderBy('post_time', 'desc')
-                    .limit(1);
+                    .limit(1).toString();
+                let results = await connector.query(resultsQuery, true);
                 return({
                     groupData: groupResults[0],
                     recentPost: results[0],
@@ -230,9 +241,10 @@ class Getter {
     // Returns a user's groups.
     async getGroups(req, res) {
         const queryFunc = async (req) => {
-            const results = await knex('group_followers')
+            const resultsQuery = knex('group_followers')
                 .select('group_name')
-                .where({ follower: req.params['0'] })
+                .where({ follower: req.params['0'] }).toString();
+            let results = await connector.query(resultsQuery, true);
             return(results);
         };
         defGetter(req, res, queryFunc);
@@ -250,9 +262,10 @@ class Getter {
     // Returns whether a group exists.
     async ifGroupExists(req, res) {
         const queryFunc = async (req) => {
-            const results = await knex('groups')
+            const resultsQuery = knex('groups')
                 .select('public')
-                .where({ group_name: req.params['0'] });
+                .where({ group_name: req.params['0'] }).toString();
+            let results = await connector.query(resultsQuery, true);
             return(results);
         };
         defGetter(req, res, queryFunc);
@@ -261,12 +274,13 @@ class Getter {
     // Returns whether user is following a group.
     async isFollowingGroup(req, res) {
         const queryFunc = async (req) => {
-            const data = await knex('group_followers')
+            const dataQuery = knex('group_followers')
                 .select('group_name')
                 .where({
                     follower: req.params['0'],
                     group_name: req.params['1'],
-                });
+                }).toString();
+            let data = await connector.query(dataQuery, true);
             return(data[0]);
         };
         defGetter(req, res, queryFunc);
@@ -275,7 +289,8 @@ class Getter {
     // Returns a group's followers.
     async getGroupFollowers(req, res) {
         const queryFunc = async (req) => {
-            const data = await knex('group_followers').select('follower').where({group_name: req.params['0']});
+            const dataQuery = knex('group_followers').select('follower').where({group_name: req.params['0']}).toString();
+            let data = await connector.query(dataQuery, true);
             return(data);
         };
         defGetter(req, res, queryFunc);
@@ -289,7 +304,7 @@ class Getter {
             if (req.params['2'] < 20) {
                 lim = req.params['2']
             };
-            const results = await knex('posts')
+            const resultsQuery = knex('posts')
                 .select(
                     'post_id',
                     'post_title',
@@ -303,7 +318,8 @@ class Getter {
                 .where({ username: req.params['0'] })
                 .andWhere('post_time', '<', _time)
                 .orderBy('post_time', 'desc')
-                .limit(lim);
+                .limit(lim).toString();
+            let results = await connector.query(resultsQuery, true);
             return(results);
         };
         defGetter(req, res, queryFunc);
@@ -317,9 +333,10 @@ class Getter {
             if (req.params['2'] < 20) {
                 lim = req.params['2']
             };
-            const following = await knex('followers').select('followee').where({
+            const followingQuery = knex('followers').select('followee').where({
                 follower: req.params['0'],
-            });
+            }).toString();
+            let following = await connector.query(followingQuery, true);
             const groupFollowing = await getGroupFollowingRaw(req.params['0']);
             const results = await getFeedQuery(
                 req.params['0'],
@@ -340,9 +357,10 @@ class Getter {
             if (req.params['2'] < 20) {
                 lim = req.params['2']
             };
-            const following = await knex('followers').select('followee').where({
+            const followingQuery = knex('followers').select('followee').where({
                 follower: req.params['0'],
-            });
+            }).toString();
+            let following = await connector.query(followingQuery, true);
             const groupFollowing = await getGroupFollowingRaw(req.params['0']);
             const results = await getFeedQuery(
                 req.params['0'],
@@ -365,7 +383,7 @@ class Getter {
             if (req.params['2'] < 20) {
                 lim = req.params['2']
             };
-            const results = await knex('posts')
+            const resultsQuery = knex('posts')
                 .select(
                     'post_id',
                     'post_title',
@@ -379,7 +397,8 @@ class Getter {
                 .where({ username: req.params['0'], post_type: true })
                 .andWhere('post_time', '<', _time)
                 .orderBy('post_time', 'desc')
-                .limit(lim);
+                .limit(lim).toString();
+            let results = await connector.query(resultsQuery, true);
             return(results);
         };
         defGetter(req, res, queryFunc);
@@ -393,7 +412,7 @@ class Getter {
             if (req.params['2'] < 20) {
                 lim = req.params['2']
             };
-            const results = await knex('posts')
+            const resultsQuery = knex('posts')
                 .select(
                     'post_id',
                     'post_title',
@@ -407,7 +426,8 @@ class Getter {
                 .where({ username: req.params['0'], post_type: false })
                 .andWhere('post_time', '<', _time)
                 .orderBy('post_time', 'desc')
-                .limit(lim);
+                .limit(lim).toString();
+            let results = await connector.query(resultsQuery, true);
             return(results);
         };
         defGetter(req, res, queryFunc);
@@ -421,12 +441,13 @@ class Getter {
             if (req.params['2'] < 20) {
                 lim = req.params['2']
             };
-            const results = await knex(req.params['3'])
+            const resultsQuery = knex(req.params['3'])
                 .select('post_id', 'post_text', 'post_time', 'username')
                 .where({ reference_id: req.params['0'] })
                 .andWhere('post_time', '<', _time)
                 .orderBy('post_time', 'desc')
-                .limit(lim);
+                .limit(lim).toString();
+            let results = await connector.query(resultsQuery, true);
             return(results);
         };
         defGetter(req, res, queryFunc);
@@ -436,7 +457,7 @@ class Getter {
     async getPostByID(req, res) {
 
         const queryFunc = async (req) => {
-            const results = await knex('posts')
+            const resultsQuery = knex('posts')
                 .select(
                     'post_id',
                     'post_title',
@@ -447,7 +468,8 @@ class Getter {
                     'group_name',
                     'photo_hash'
                 )
-                .where({ post_id: req.params['0'] });
+                .where({ post_id: req.params['0'] }).toString();
+            let results = await connector.query(resultsQuery, true);
             return(results[0]);
         };
         defGetter(req, res, queryFunc);
@@ -456,9 +478,10 @@ class Getter {
     // Returns a user's public key.
     async getModulus(req, res) {
         const queryFunc = async (req) => {
-            const results = await knex('users')
+            const resultsQuery = knex('users')
                 .select('modulus')
-                .where({username: req.params['0']});
+                .where({username: req.params['0']}).toString();
+            let results = await connector.query(resultsQuery, true);
             return(results[0]);
         };
         defGetter(req, res, queryFunc);
@@ -467,9 +490,10 @@ class Getter {
     // Returns a user's salt.
     async getSalt(req, res) {
         const queryFunc = async (req) => {
-            const results = await knex('users')
+            const resultsQuery = knex('users')
                 .select('salt')
-                .where({username: req.params['0']});
+                .where({username: req.params['0']}).toString();
+            let results = await connector.query(resultsQuery, true);
             return(results[0]);
         };
         defGetter(req, res, queryFunc);
@@ -478,9 +502,10 @@ class Getter {
     // Returns a user's settings.
     async getSettings(req, res) {
         const queryFunc = async (req) => {
-            const results = await knex('users')
+            const resultsQuery = knex('users')
                 .select('settings')
-                .where({username: req.params['0']});
+                .where({username: req.params['0']}).toString();
+            let results = await connector.query(resultsQuery, true);
             return(results[0]);
         };
         defGetter(req, res, queryFunc);
@@ -489,9 +514,10 @@ class Getter {
     // Returns a user's messaging invitations.
     async getInvites(req, res) {
         const queryFunc = async (req) => {
-            const results = await knex('invites')
+            const resultsQuery = knex('invites')
                 .select('invite', 'invite_key', 'invite_id')
-                .where({username: req.params['0']});
+                .where({username: req.params['0']}).toString();
+            let results = await connector.query(resultsQuery, true);
             return(results);
         };
         defGetter(req, res, queryFunc);
@@ -516,10 +542,10 @@ class Getter {
     // Returns a user's feed with accounts exclusively.
     async getFeedUsersOnly(req, res) {
         const queryFunc = async (req) => {
-            const users = await knex('followers')
+            const usersQuery = knex('followers')
                 .select('followee')
-                .where({follower: req.params['0']});
-            
+                .where({follower: req.params['0']}).toString();
+            let users = await connector.query(usersQuery, true);
             const userArr = [req.params['0']]
             users.forEach(user => {
                 userArr.push(user.followee)
@@ -534,18 +560,22 @@ class Getter {
     // Returns a post's statistics.
     async getPostStats(req, res) {
         const queryFunc = async (req) => {
-            const results = await knex('likes')
+            const resultsQuery = knex('likes')
                 .select('liked')
-                .where({username: req.params['0'], post_id: req.params['1']});
-            const likedResults = await knex('likes')
+                .where({username: req.params['0'], post_id: req.params['1']}).toString();
+            let results = await connector.query(resultsQuery, true);
+            const likedResultsQuery = knex('likes')
                 .where({liked: true, post_id: req.params['1']})
-                .count('liked as cnt');
-            const dislikedResults = await knex('likes')
+                .count('liked as cnt').toString();
+            let likedResults = await connector.query(likedResultsQuery, true);
+            const dislikedResultsQuery = knex('likes')
                 .where({liked: false, post_id: req.params['1']})
-                .count('liked as cnt');
-            const commentCnt = await knex('post_comments')
+                .count('liked as cnt').toString();
+            let dislikedResults = await connector.query(dislikedResultsQuery, true);
+            const commentCntQry = knex('post_comments')
                 .where({reference_id: req.params['1']})
-                .count('post_id as cnt');
+                .count('post_id as cnt').toString();
+            let commentCnt = await connector.query(commentCntQry, true);
             return({likeData: results[0], likes: likedResults[0].cnt, dislikes: dislikedResults[0].cnt, comments: commentCnt[0].cnt});
         };
         defGetter(req, res, queryFunc);
@@ -554,12 +584,14 @@ class Getter {
     // Counts the number of likes a post has.
     async countLikes(req, res) {
         const queryFunc = async (req) => {
-            const likedResults = await knex('likes')
+            const likedResultsQuery = knex('likes')
                 .where({liked: true, post_id: req.params['1']})
-                .count('liked as cnt');
-            const dislikedResults = await knex('likes')
+                .count('liked as cnt').toString();
+            let likedResults = await connector.query(likedResultsQuery, true);
+            const dislikedResultsQuery = knex('likes')
                 .where({liked: false, post_id: req.params['1']})
-                .count('liked as cnt');
+                .count('liked as cnt').toString();
+            let dislikedResults = await connector.query(dislikedResultsQuery, true);
             return({likes: likedResults[0].cnt, dislikes: dislikedResults[0].cnt});
         };
         defGetter(req, res, queryFunc);
@@ -568,9 +600,10 @@ class Getter {
     // Returns matching accounts for user request.
     async searchUsers(req, res) {
         const queryFunc = async (req) => {
-            const results = await knex('users')
+            const resultsQuery = knex('users')
                 .select('username')
-                .whereRaw(`username ilike '%${req.params['0']}%' or display_name ilike '%${req.params['0']}%'`);
+                .whereRaw(`username ilike '%${req.params['0']}%' or display_name ilike '%${req.params['0']}%'`).toString();
+            let results = await connector.query(resultsQuery, true);
             return(results);
         };
         defGetter(req, res, queryFunc);
@@ -580,9 +613,10 @@ class Getter {
     // Returns matching groups for user request.
     async searchGroups(req, res) {
         const queryFunc = async (req) => {
-            const results = await knex('groups')
+            const resultsQry = knex('groups')
                 .select('group_name')
-                .whereRaw(`group_name like '%${req.params['0']}%'`);
+                .whereRaw(`group_name like '%${req.params['0']}%'`).toString();
+            let results = await connector.query(resultsQry, true);
             return(results);
         };
         defGetter(req, res, queryFunc);
