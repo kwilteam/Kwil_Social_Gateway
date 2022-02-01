@@ -1,14 +1,13 @@
 const getGroupMembers = require('./utilities/getGroupModerators.js');
 const { checkPostSig, checkSignature, checkGroupSignator } = require("./utilities/signatures");
 const knex = require('../database/db.js');
-const writer = require('./filesystem/fileWriter.js');
 require(`dotenv`).config();
 const connector = require('../database/kwildb.js');
-const { hashPath } = require('./utilities/hashPath.js');
+const { hashStorage } = require('./utilities/hashPath.js');
 
 
 // This method is a wrapper method to help modularize code for functions in handler.js.
-async function reqHandler (req, res, _sigFunc, _dbFunc, _bundleFunc = null) {
+async function reqHandler (req, res, _sigFunc, _dbFunc) {
     try {
         // Since we use body-parser, we can just use req.body in _sigFunc and _dbFunc
         console.log(`Calling ${req.route.path}.  Starting timer...`);
@@ -28,7 +27,6 @@ async function reqHandler (req, res, _sigFunc, _dbFunc, _bundleFunc = null) {
             res.send('There was an error.  If you are using the API, then it was likely a server side issue');
             console.log(e);
             console.log(`Handler called: ${req.route.path}`);
-            res.send(e);
         } catch(e) {
             console.log(e);
             console.log(`${req.socket.remoteAddress} is spamming the server and has caused an error (likely a pkey collision). Blocking the requestor could prevent more of these errors.`);
@@ -98,15 +96,22 @@ const createHandler = (defHandler) => {
                     creation_signature: _d.creationSignature
                 }).toString();
 
-                let query2 = await knex('users_lite').insert({
+                let query2 = knex('users_lite').insert({
                     username: _d.username,
                     modulus: _d.modulus,
                 }).toString();
 
-                const hPath = hashPath(_d.settingsHash)
-                await connector.query(query1, true)
-                await connector.query(query2, true)
-                await connector.storeFile('settings/'+hPath+_d.settingsHash, _d.settings, true)
+                const hPath = hashStorage(_d.settingsHash)
+                let isError = false
+                try {
+                    await connector.query(query1, true)
+                    await connector.query(query2, true)
+                } catch(e) {
+                    isError = true
+                }
+                if (isError == false) {
+                    await connector.storeFile('settings/'+hPath, _d.settings)
+                }
             };
             // Checks for errors before creating user in database.
             defHandler(req, res, creationSig, userDB);
@@ -128,7 +133,7 @@ const createHandler = (defHandler) => {
                 }).toString();
                 await connector.query(query1, true)
                 if (p.photo.length > 0) {
-                    writer.storePhotos(p.photo, p.data.photoHash);
+                    connector.storePhoto(hashStorage('images/'+p.data.photoHash[0]), p.photo[0])
                 };
             };
             // Checks for errors before creating post in database.
@@ -183,13 +188,22 @@ const createHandler = (defHandler) => {
                     rsa_signature: g.signature,
                     signator: g.data.username,
                 }).toString();
-                await connector.query(query1, true);
+                let pkeyErr = false
+                try {
+                    await connector.query(query1, true);
+                } catch(e) {
+                    console.log('PKEY ERR')
+                    pkeyErr = true
+                }
+                if (pkeyErr == false) {
+
                 if (g.photo.length > 0) {
-                    writer.storePhotos(g.photo, [g.data.photoHash]);
+                    connector.storePhoto('images/'+hashStorage(g.data.photoHash), g.photo[0])
                 };
                 if (g.banner.length > 0) {
-                    writer.storePhotos(g.banner, [g.data.bannerHash]);
+                    connector.storePhoto('images/'+hashStorage(g.data.bannerHash), g.banner[0]);
                 };
+            }
             };
             // Checks for errors before creating group in database.
             defHandler(req, res, checkPostSig, groupDB);
@@ -207,10 +221,10 @@ const createHandler = (defHandler) => {
                     .update(g.changed).toString();
                 await connector.query(query1, true);
                 if (g.changed.photo_hash && g.photo) {
-                    writer.storePhotos(g.photo, [g.data.photoHash]);
+                    connector.storePhoto('images/'+hashStorage(g.data.photoHash), g.photo[0])
                 };
                 if (g.changed.banner_hash && g.banner) {
-                    writer.storePhotos(g.banner, [g.data.bannerHash]);
+                    connector.storePhoto('images/'+hashStorage(g.data.bannerHash), g.banner[0]);
                 };
             };
             // Checks for errors before initiating group changes in database.
@@ -241,7 +255,6 @@ const createHandler = (defHandler) => {
                 };
                 // Creates edited account SQL statement if edits were requested
                 if (Object.keys(updateObj).length > 0) {
-                    console.log(updateObj);
                     let query1 = knex('users')
                         .where({
                             username: a.data.username.toLowerCase(),
@@ -249,13 +262,15 @@ const createHandler = (defHandler) => {
                         .update(updateObj).toString();
                     await connector.query(query1, true);
                     if (a.photo && a.changed.includes('pfp_hash')) {
-                        writer.storePhotos(a.photo, [a.data.pfpHash]);
+                        await connector.storePhoto('images/'+hashStorage(a.data.pfpHash), a.photo[0])
                     };
                     if (a.banner && a.changed.includes('banner_hash')) {
-                        writer.storePhotos(a.banner, [a.data.bannerHash]);
+                        await connector.storePhoto('images/'+hashStorage(a.data.bannerHash), a.banner[0])
+
                     };
                     if (a.settings && a.changed.includes('settings')) {
-                        writer.writeSettings(a.settings, a.data.settingsHash);
+                        await connector.storeFile('settings/'+hashStorage(a.data.settingsHash), a.settings)
+
                     };
                 };
 
@@ -270,12 +285,12 @@ const createHandler = (defHandler) => {
                 // Checks whether there is an existing entry for this requested follower relationship.
                 f.data.username = f.data.username.toLowerCase();
                 f.data.followee = f.data.followee.toLowerCase();
-                const results = knex('followers')
+                const resQuery1 = knex('followers')
                     .select('followee')
                     .where({ follower: f.data.username, followee: f.data.followee }).toString();
-                resQuery1 = await connector.query(results, true);
+                let relation = await connector.query(resQuery1);
                 let relationExists = false;
-                if (resQuery1.length > 0) {
+                if (relation.length > 0) {
                     relationExists = true;
                 };
                 if ( f.data.follow == true && relationExists == false ) {
@@ -369,7 +384,7 @@ const createHandler = (defHandler) => {
                             group_name: f.data.group,
                             follower: f.data.username,
                         }).toString();
-                    resQuery1 = await connector.query(results, true);
+                    let resQuery1 = await connector.query(results);
                     if (resQuery1.length == 0) {
                         // Checks to see whether anything is recorded when requesting user is queried in group followers.
                         let query1 = knex('group_followers').insert({
@@ -402,11 +417,11 @@ const createHandler = (defHandler) => {
                 // Checks whether user has liked a post and inserted/updates like status accordingly.
                 l.data.username = l.data.username.toLowerCase()
                 const _date = new Date(l.data.timestamp)
-                const prevLikeRes = await knex('likes').select('post_time').where({
+                const prevLikeRes = knex('likes').select('post_time').where({
                     username: l.data.username,
                     post_id: l.data.postID,
                 }).toString();
-                let prevLike = await connector.query(prevLikeRes, true);
+                let prevLike = await connector.query(prevLikeRes);
 
                 // Updates like status.
                 if (prevLike.length > 0) {
@@ -450,7 +465,7 @@ const createHandler = (defHandler) => {
                     username: l.data.username,
                     post_id: l.data.postID,
                 }).toString();
-                let prevLike = await connector.query(prevLikeRes, true);
+                let prevLike = await connector.query(prevLikeRes);
                 let _date = new Date(l.data.timestamp);
 
                 // Checks whether something necessitates deletion.

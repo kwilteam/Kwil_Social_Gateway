@@ -31,7 +31,7 @@ class Getter {
             const accountRes = knex('users_lite')
                 .select('modulus')
                 .where({username: req.params['0']}).toString();
-            let account = await connector.query(accountRes, true);
+            let account = await connector.query(accountRes);
             return account[0];
         };
         defGetter(req, res, queryFunc);
@@ -43,7 +43,7 @@ class Getter {
             const loginRes = knex('users')
                 .select('login_ciphertext', 'salt')
                 .where({ username: req.params['0'] }).toString();
-            let login = await connector.query(loginRes, true);
+            let login = await connector.query(loginRes);
             return login;
         };
         defGetter(req, res, queryFunc);
@@ -55,7 +55,7 @@ class Getter {
             const dataRes = knex('users')
                 .select('display_name', 'bio', 'pfp_hash', 'banner_hash', 'settings')
                 .where({ username: req.params['0'] }).toString();
-            let data = await connector.query(dataRes, true);
+            let data = await connector.query(dataRes);
             return data[0];
         };
         defGetter(req, res, queryFunc);
@@ -68,7 +68,7 @@ class Getter {
                 follower: req.params['0'],
                 followee: req.params['1'],
             }).toString();
-            let data = await connector.query(dataRes, true);
+            let data = await connector.query(dataRes);
             return data[0];
         };
         defGetter(req, res, queryFunc);
@@ -92,7 +92,7 @@ class Getter {
                     'rules'
                 )
                 .where({ group_name: req.params['0'] }).toString();
-                let results = await connector.query(resQuery, true);
+                let results = await connector.query(resQuery);
             return results[0];
         };
         defGetter(req, res, queryFunc);
@@ -104,7 +104,7 @@ class Getter {
             const followersQuery = knex('followers')
                 .select('followee')
                 .where({follower: req.params['0']}).toString();
-            let followers = await connector.query(followersQuery, true);
+            let followers = await connector.query(followersQuery);
             return followers;
         };
         defGetter(req, res, queryFunc);
@@ -116,7 +116,7 @@ class Getter {
             const followersQuery = knex('followers')
                 .select('follower')
                 .where({followee: req.params['0']}).toString();
-            let followers = await connector.query(followersQuery, true);
+            let followers = await connector.query(followersQuery);
             return followers;
         };
         defGetter(req, res, queryFunc);
@@ -150,7 +150,7 @@ class Getter {
                     .andWhere('post_time', '<', _time)
                     .orderBy('post_time', 'desc')
                     .limit(lim).toString();
-                let results = await connector.query(resQuery, true);
+                let results = await connector.query(resQuery);
                 return results;
             } else {
                 const groupMembers = await getGroupModerators(req.params['0']);
@@ -177,7 +177,7 @@ class Getter {
                     follower: req.params['0'],
                     group_name: req.params['1'],
                 }).toString();
-            let results = await connector.query(resQuery, true);
+            let results = await connector.query(resQuery);
             return results;
         };
         defGetter(req, res, queryFunc);
@@ -199,7 +199,7 @@ class Getter {
                     'color'
                 )
                 .where({ group_name: req.params['0'] }).toString();
-            let groupResults = await connector.query(groupResultsQuery, true);
+            let groupResults = await connector.query(groupResultsQuery);
             const publicity = await isGroupPublic(req.params['0'])
             let results = ''
             if (publicity) {
@@ -217,7 +217,7 @@ class Getter {
                     .where({ group_name: req.params['0'] })
                     .orderBy('post_time', 'desc')
                     .limit(1).toString();
-                let results = await connector.query(resultsQuery, true);
+                let results = await connector.query(resultsQuery);
                 return({
                     groupData: groupResults[0],
                     recentPost: results[0],
@@ -244,7 +244,7 @@ class Getter {
             const resultsQuery = knex('group_followers')
                 .select('group_name')
                 .where({ follower: req.params['0'] }).toString();
-            let results = await connector.query(resultsQuery, true);
+            let results = await connector.query(resultsQuery);
             return(results);
         };
         defGetter(req, res, queryFunc);
@@ -265,7 +265,7 @@ class Getter {
             const resultsQuery = knex('groups')
                 .select('public')
                 .where({ group_name: req.params['0'] }).toString();
-            let results = await connector.query(resultsQuery, true);
+            let results = await connector.query(resultsQuery);
             return(results);
         };
         defGetter(req, res, queryFunc);
@@ -280,7 +280,7 @@ class Getter {
                     follower: req.params['0'],
                     group_name: req.params['1'],
                 }).toString();
-            let data = await connector.query(dataQuery, true);
+            let data = await connector.query(dataQuery);
             return(data[0]);
         };
         defGetter(req, res, queryFunc);
@@ -290,7 +290,7 @@ class Getter {
     async getGroupFollowers(req, res) {
         const queryFunc = async (req) => {
             const dataQuery = knex('group_followers').select('follower').where({group_name: req.params['0']}).toString();
-            let data = await connector.query(dataQuery, true);
+            let data = await connector.query(dataQuery);
             return(data);
         };
         defGetter(req, res, queryFunc);
@@ -319,7 +319,7 @@ class Getter {
                 .andWhere('post_time', '<', _time)
                 .orderBy('post_time', 'desc')
                 .limit(lim).toString();
-            let results = await connector.query(resultsQuery, true);
+            let results = await connector.query(resultsQuery);
             return(results);
         };
         defGetter(req, res, queryFunc);
@@ -336,7 +336,7 @@ class Getter {
             const followingQuery = knex('followers').select('followee').where({
                 follower: req.params['0'],
             }).toString();
-            let following = await connector.query(followingQuery, true);
+            let following = await connector.query(followingQuery);
             const groupFollowing = await getGroupFollowingRaw(req.params['0']);
             const results = await getFeedQuery(
                 req.params['0'],
@@ -360,7 +360,7 @@ class Getter {
             const followingQuery = knex('followers').select('followee').where({
                 follower: req.params['0'],
             }).toString();
-            let following = await connector.query(followingQuery, true);
+            let following = await connector.query(followingQuery);
             const groupFollowing = await getGroupFollowingRaw(req.params['0']);
             const results = await getFeedQuery(
                 req.params['0'],
@@ -398,7 +398,7 @@ class Getter {
                 .andWhere('post_time', '<', _time)
                 .orderBy('post_time', 'desc')
                 .limit(lim).toString();
-            let results = await connector.query(resultsQuery, true);
+            let results = await connector.query(resultsQuery);
             return(results);
         };
         defGetter(req, res, queryFunc);
@@ -427,7 +427,7 @@ class Getter {
                 .andWhere('post_time', '<', _time)
                 .orderBy('post_time', 'desc')
                 .limit(lim).toString();
-            let results = await connector.query(resultsQuery, true);
+            let results = await connector.query(resultsQuery);
             return(results);
         };
         defGetter(req, res, queryFunc);
@@ -447,7 +447,7 @@ class Getter {
                 .andWhere('post_time', '<', _time)
                 .orderBy('post_time', 'desc')
                 .limit(lim).toString();
-            let results = await connector.query(resultsQuery, true);
+            let results = await connector.query(resultsQuery);
             return(results);
         };
         defGetter(req, res, queryFunc);
@@ -469,7 +469,7 @@ class Getter {
                     'photo_hash'
                 )
                 .where({ post_id: req.params['0'] }).toString();
-            let results = await connector.query(resultsQuery, true);
+            let results = await connector.query(resultsQuery);
             return(results[0]);
         };
         defGetter(req, res, queryFunc);
@@ -481,7 +481,7 @@ class Getter {
             const resultsQuery = knex('users')
                 .select('modulus')
                 .where({username: req.params['0']}).toString();
-            let results = await connector.query(resultsQuery, true);
+            let results = await connector.query(resultsQuery);
             return(results[0]);
         };
         defGetter(req, res, queryFunc);
@@ -493,7 +493,7 @@ class Getter {
             const resultsQuery = knex('users')
                 .select('salt')
                 .where({username: req.params['0']}).toString();
-            let results = await connector.query(resultsQuery, true);
+            let results = await connector.query(resultsQuery);
             return(results[0]);
         };
         defGetter(req, res, queryFunc);
@@ -505,7 +505,7 @@ class Getter {
             const resultsQuery = knex('users')
                 .select('settings')
                 .where({username: req.params['0']}).toString();
-            let results = await connector.query(resultsQuery, true);
+            let results = await connector.query(resultsQuery);
             return(results[0]);
         };
         defGetter(req, res, queryFunc);
@@ -517,7 +517,7 @@ class Getter {
             const resultsQuery = knex('invites')
                 .select('invite', 'invite_key', 'invite_id')
                 .where({username: req.params['0']}).toString();
-            let results = await connector.query(resultsQuery, true);
+            let results = await connector.query(resultsQuery);
             return(results);
         };
         defGetter(req, res, queryFunc);
@@ -545,7 +545,7 @@ class Getter {
             const usersQuery = knex('followers')
                 .select('followee')
                 .where({follower: req.params['0']}).toString();
-            let users = await connector.query(usersQuery, true);
+            let users = await connector.query(usersQuery);
             const userArr = [req.params['0']]
             users.forEach(user => {
                 userArr.push(user.followee)
@@ -563,19 +563,19 @@ class Getter {
             const resultsQuery = knex('likes')
                 .select('liked')
                 .where({username: req.params['0'], post_id: req.params['1']}).toString();
-            let results = await connector.query(resultsQuery, true);
+            let results = await connector.query(resultsQuery);
             const likedResultsQuery = knex('likes')
                 .where({liked: true, post_id: req.params['1']})
                 .count('liked as cnt').toString();
-            let likedResults = await connector.query(likedResultsQuery, true);
+            let likedResults = await connector.query(likedResultsQuery);
             const dislikedResultsQuery = knex('likes')
                 .where({liked: false, post_id: req.params['1']})
                 .count('liked as cnt').toString();
-            let dislikedResults = await connector.query(dislikedResultsQuery, true);
+            let dislikedResults = await connector.query(dislikedResultsQuery);
             const commentCntQry = knex('post_comments')
                 .where({reference_id: req.params['1']})
                 .count('post_id as cnt').toString();
-            let commentCnt = await connector.query(commentCntQry, true);
+            let commentCnt = await connector.query(commentCntQry);
             return({likeData: results[0], likes: likedResults[0].cnt, dislikes: dislikedResults[0].cnt, comments: commentCnt[0].cnt});
         };
         defGetter(req, res, queryFunc);
@@ -587,11 +587,11 @@ class Getter {
             const likedResultsQuery = knex('likes')
                 .where({liked: true, post_id: req.params['1']})
                 .count('liked as cnt').toString();
-            let likedResults = await connector.query(likedResultsQuery, true);
+            let likedResults = await connector.query(likedResultsQuery);
             const dislikedResultsQuery = knex('likes')
                 .where({liked: false, post_id: req.params['1']})
                 .count('liked as cnt').toString();
-            let dislikedResults = await connector.query(dislikedResultsQuery, true);
+            let dislikedResults = await connector.query(dislikedResultsQuery);
             return({likes: likedResults[0].cnt, dislikes: dislikedResults[0].cnt});
         };
         defGetter(req, res, queryFunc);
@@ -603,7 +603,7 @@ class Getter {
             const resultsQuery = knex('users')
                 .select('username')
                 .whereRaw(`username ilike '%${req.params['0']}%' or display_name ilike '%${req.params['0']}%'`).toString();
-            let results = await connector.query(resultsQuery, true);
+            let results = await connector.query(resultsQuery);
             return(results);
         };
         defGetter(req, res, queryFunc);
@@ -616,7 +616,7 @@ class Getter {
             const resultsQry = knex('groups')
                 .select('group_name')
                 .whereRaw(`group_name like '%${req.params['0']}%'`).toString();
-            let results = await connector.query(resultsQry, true);
+            let results = await connector.query(resultsQry);
             return(results);
         };
         defGetter(req, res, queryFunc);

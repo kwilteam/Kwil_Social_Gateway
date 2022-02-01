@@ -22,6 +22,10 @@
     "knex": "^1.0.1",
     "kwildb_connector": "^1.0.1",
     "ngrok": "^4.3.0",
-    "pg": "^8.7.1"
+    "pg": "^8.7.1",
+    "uuid": "^8.3.2"
+  },
+  "devDependencies": {
+    "eslint": "^8.7.0"
   }
 }

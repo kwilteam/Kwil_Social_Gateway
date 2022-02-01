@@ -8,7 +8,7 @@ const pgStartup = async () => {
         // Connects server to database.
         const initSQL = fs.readFileSync('./database/init.sql').toString();
         // Creates database tables if they don't exist and logs successful connection.
-        const b = await connector.query(initSQL, false);
+        await connector.query(initSQL, false);
         console.log('Connected to database');
 
     } catch (e) {

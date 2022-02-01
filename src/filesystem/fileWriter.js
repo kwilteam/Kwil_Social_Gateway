@@ -4,6 +4,7 @@ const { hashPath } = require('../utilities/hashPath');
 const fsJ = require('fs-jetpack');
 const path = require('path');
 require(`dotenv`).config();
+const {v4} = require('uuid')
 
 
 // Writes file content to desired file path parameter.
@@ -134,7 +135,9 @@ const moveFile = async (file, dir2, _newName = '') => {
         console.log(`Deleting file ${file}`);
         try {
             await fs.unlinkSync(file);
-        } catch(e) {};
+        } catch(e) {
+            console.log(e)
+        };
 
     });
     source.on('error', function (err) {

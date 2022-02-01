@@ -8,6 +8,11 @@ const hashPath = (_string) => {
     return _path;
 };
 
+const hashStorage = (_string) => {
+    const pref = hashPath(_string)
+    return pref+_string
+}
+
 // Generates a random string based on 'characters' and the inputted length parameter.
 const generateRandomString = (_length) => {
     const characters =
@@ -22,4 +27,4 @@ const generateRandomString = (_length) => {
 };
 
 
-module.exports = { hashPath, generateRandomString };
+module.exports = { hashPath, hashStorage, generateRandomString };

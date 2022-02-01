@@ -6,16 +6,13 @@ const Express = require('express');
 const handlerFile = require('./src/handler');
 const handler = handlerFile.createHandler(handlerFile.reqHandler);
 const getter = require('./src/getter');
-const cors = require('cors');
 const app = Express();
 const ngrok = require('ngrok')
 const colors = require('colors')
 const pgStartup = require('./database/startup.js')
 
-
 const start = async () => {
     if (cluster.isMaster) {
-        await pgStartup()
 
         // Starts up the database and logs startup to console
         console.log(`Master ${process.pid} is running`);
@@ -25,7 +22,6 @@ const start = async () => {
             cluster.fork();
         }
         app.use(bodyParser.json({ limit: '10mb' }));
-        app.use(cors());
 
         // It is important that post requests don't have any params.
         // Params will not be stored with the transaction on Arweave.
@@ -79,18 +75,23 @@ const start = async () => {
         app.get('/*/getGroupFollowers', getter.getGroupFollowers);
         app.get(`/*/searchUsers`, getter.searchUsers);
         app.get(`/*/searchGroups`, getter.searchGroups);
-        app.use(Express.static('public', { fallthrough: false }));
-        await ngrok.authtoken(process.env.NGROK_AUTH)
-        /*const url = await ngrok.connect({
+        //app.use(Express.static('public', { fallthrough: false }));
+        try{
+        /*await ngrok.authtoken(process.env.NGROK_AUTH)
+        const url = await ngrok.connect({
             addr: 8080,
             subdomain: process.env.NGROK_SUB,
             region: 'us',
             authtoken: process.env.NGROK_AUTH
         })*/
+    } catch(e) {
+        console.log(e)
+    }
+    await pgStartup()
 
-        app.listen(8080, () => {
+        app.listen(8443, () => {
             console.log(numCPUs + ' worker threads running');
-            console.log(`Server is listening on port 8080`.bold.brightGreen);
+            console.log(`Server is listening on port 8433`.bold.brightGreen);
         });
     }
 };
